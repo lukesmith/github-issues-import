@@ -9,3 +9,5 @@ ${body}
 ----
 
 _**[${user_name}](${user_url})** included the following code: ${url}/commits_
+
+${commits}

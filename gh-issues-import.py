@@ -177,6 +177,23 @@ def format_issue(template_data):
 	template = config.get('format', 'issue_template', fallback=default_template)
 	return format_from_template(template, template_data)
 
+def format_pull_request_commits(commits):
+	table = []
+	for commit in commits:
+		default_template = os.path.join(__location__, 'templates', 'commit.md')
+		template = config.get('format', 'commit_template', fallback=default_template)
+		template_data = {}
+		template_data['sha'] = commit['sha']
+		template_data['message'] = commit['commit']['message']
+		template_data['date'] = format_date(commit['commit']['committer']['date'])
+		template_data['committer_name'] = commit['commit']['committer']['name']
+		template_data['user_url'] = commit['committer']['url']
+		template_data['user_name'] = commit['committer']['login']
+		template_data['user_avatar'] = commit['committer']['avatar_url']
+		template_data['original_url'] = commit['html_url']
+		table.append(format_from_template(template, template_data))
+	return '\n'.join(str(x) for x in table)
+
 def format_pull_request(template_data):
 	default_template = os.path.join(__location__, 'templates', 'pull_request.md')
 	template = config.get('format', 'pull_request_template', fallback=default_template)
@@ -256,6 +273,9 @@ def get_comments_on_issue(which, issue):
 	else :
 		return []
 
+def get_commits_on_pull_request(which, issue):
+	return send_request(which, "pulls/%d/commits" % (issue['number']))
+
 def import_milestone(source):
 	data = {
 		"title": source['title'],
@@ -320,7 +340,6 @@ def import_issues(issues):
 	new_labels = []
 	
 	for issue in issues:
-		
 		new_issue = {}
 		new_issue['title'] = issue['title']
 		
@@ -363,6 +382,8 @@ def import_issues(issues):
 		template_data['body'] = issue['body']
 		
 		if "pull_request" in issue and issue['pull_request']['html_url'] is not None:
+			commits = get_commits_on_pull_request('source', issue)
+			template_data['commits'] = format_pull_request_commits(commits)
 			new_issue['body'] = format_pull_request(template_data)
 		else:
 			new_issue['body'] = format_issue(template_data)
